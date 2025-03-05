@@ -23,6 +23,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -100,8 +101,28 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
         }
       }
     } else {
-      for (TopicPartition p : partitions) {
-        Lineage.getSources().add("kafka", ImmutableList.of(bootStrapServers, p.topic()));
+      try (Consumer<?, ?> consumer = spec.getConsumerFactoryFn().apply(spec.getConsumerConfig())) {
+        Map<String, List<Integer>> topicsAndPartitions = new HashMap<>();
+        try {
+          for (TopicPartition p : partitions) {
+            if (!topicsAndPartitions.containsKey(p.topic())) {
+              List<Integer> partitionsList = new ArrayList<>();
+              List<PartitionInfo> partitionInfoList = consumer.partitionsFor(p.topic());
+              for(PartitionInfo info : partitionInfoList) {
+                partitionsList.add(info.partition());
+              }
+              topicsAndPartitions.put(p.topic(), partitionsList);
+            }
+            checkState(
+                    topicsAndPartitions.containsKey(p.topic())
+                            && topicsAndPartitions.get(p.topic()).contains(p.partition()),
+                    "Partition {} does not exist for topic {}. Please check Kafka configuration.",
+                    p.partition(), p.topic());
+            Lineage.getSources().add("kafka", ImmutableList.of(bootStrapServers, p.topic()));
+          }
+        } catch (Exception E) {
+          LOG.warn("Unable to access cluster. Skipping fail fast checks.");
+        }
       }
     }
 
