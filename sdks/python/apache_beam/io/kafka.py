@@ -124,8 +124,8 @@ ReadFromKafkaSchema = typing.NamedTuple(
         ('redistribute', typing.Optional[bool]),
         ('redistribute_num_keys', typing.Optional[np.int32]),
         ('allow_duplicates', typing.Optional[bool]),
-        ('dynamic_read_poll_interval_seconds', typing.Optional[int])
-        ('consumer_factory_fn', typing.Optional[str]),
+        ('dynamic_read_poll_interval_seconds', typing.Optional[int]),
+        ('consumer_factory_fn_class', typing.Optional[str]),
         ('consumer_factory_fn_params', typing.Optional[typing.Mapping[str, str]])
     ])
 
